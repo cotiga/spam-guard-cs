@@ -1,0 +1,32 @@
+{
+    "name": "cotiga/spam-guard-cs",
+    "description": "Antispam formulaires, ban IP et journalisation d'erreurs HTTP pour le socle CotiCMS Core/Starter (Laravel 13 + Filament v5). Admin Filament intégré.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Serge Ledig",
+            "email": "cotiga.sn@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "laravel/framework": "^13.0",
+        "filament/filament": "^5.0",
+        "stevebauman/location": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Cotiga\\SpamGuard\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Cotiga\\SpamGuard\\SpamGuardServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
