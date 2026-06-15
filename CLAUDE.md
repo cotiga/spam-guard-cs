@@ -43,7 +43,7 @@ src/
 
 - Resources nommées `SG*` (préfixe explicite, auto-documenté).
 - Admin lecture seule sauf `SGErrorIgnoredResource` (CRUD — c'est de la config).
-- `canViewAny()` = `auth()->user()?->isAdmin() ?? false` ; pas d'override de `canAccess()`.
+- `canViewAny()` : `HttpErrors` et `ErrorIgnoreds` = admin only ; `RefusedContacts` et `BannedIps` = admin **ou** manager (gestion quotidienne des faux positifs / IP). Pas d'override de `canAccess()`.
 - Schéma réel : `spam_guard_banned_ips` ne contient que `ip` (pas de `raison`).
 - Imports v5 : `Filament\Schemas\Schema`, `Filament\Actions\*`, `recordActions()`/`toolbarActions()`.
 

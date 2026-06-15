@@ -33,7 +33,7 @@ class SGBannedIpResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->isAdmin() || auth()->user()?->isManager();
     }
 
     public static function canCreate(): bool
