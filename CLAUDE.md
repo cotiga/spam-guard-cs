@@ -19,13 +19,14 @@ config/spam-guard.php                  # Config publiable (seuils, pays, TLD, pa
 database/migrations/                   # 4 tables spam_guard_*
 resources/views/errors/generic.blade   # Vue d'erreur standalone (fallback)
 src/
-├── Models/                            # BannedIp, HttpError, ErrorIgnored, RefusedContact
+├── Models/                            # BannedIp, BannedEmail, HttpError, ErrorIgnored, RefusedContact
 ├── Services/
-│   ├── FormSpamGuard.php              # Antispam formulaires (injecté dans les controllers)
+│   ├── FormSpamGuard.php              # Antispam formulaires (injecté dans les controllers) — honore aussi spam_guard_banned_ips et spam_guard_banned_emails (refus immédiat si IP/e-mail banni)
 │   └── HttpErrorGuard.php             # Logique log + ban auto + vue d'erreur (Response|null)
-├── Filament/Resources/               # 4 Resources SG* (découvertes par le Plugin)
+├── Filament/Resources/               # 5 Resources SG* (découvertes par le Plugin)
 │   ├── RefusedContacts/SGRefusedContactResource
 │   ├── BannedIps/SGBannedIpResource
+│   ├── BannedEmails/SGBannedEmailResource
 │   ├── HttpErrors/SGHttpErrorResource
 │   └── ErrorIgnoreds/SGErrorIgnoredResource
 ├── SpamGuardPlugin.php               # Plugin Filament (discoverResources)
@@ -43,8 +44,8 @@ src/
 
 - Resources nommées `SG*` (préfixe explicite, auto-documenté).
 - Admin lecture seule sauf `SGErrorIgnoredResource` (CRUD — c'est de la config).
-- `canViewAny()` : `HttpErrors` et `ErrorIgnoreds` = admin only ; `RefusedContacts` et `BannedIps` = admin **ou** manager (gestion quotidienne des faux positifs / IP). Pas d'override de `canAccess()`.
-- Schéma réel : `spam_guard_banned_ips` ne contient que `ip` (pas de `raison`).
+- `canViewAny()` : `HttpErrors` et `ErrorIgnoreds` = admin only ; `RefusedContacts`, `BannedIps` et `BannedEmails` = admin **ou** manager (gestion quotidienne des faux positifs / IP / e-mails). Pas d'override de `canAccess()`.
+- Schéma réel : `spam_guard_banned_ips` ne contient que `ip`, `spam_guard_banned_emails` que `mel` (comparaison normalisée minuscules + trim).
 - Imports v5 : `Filament\Schemas\Schema`, `Filament\Actions\*`, `recordActions()`/`toolbarActions()`.
 
 ## Tables
@@ -53,6 +54,7 @@ src/
 |-------------------------------|--------------------------------------|---------------------------|
 | `spam_guard_refused_contacts` | Formulaires refusés                  | SGRefusedContactResource  |
 | `spam_guard_banned_ips`       | IP bannies                           | SGBannedIpResource        |
+| `spam_guard_banned_emails`    | E-mails bannis                       | SGBannedEmailResource     |
 | `spam_guard_errors`           | Erreurs HTTP loguées                 | SGHttpErrorResource       |
 | `spam_guard_error_ignoreds`   | Motifs d'URL à ignorer               | SGErrorIgnoredResource    |
 

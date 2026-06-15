@@ -4,6 +4,7 @@ namespace Cotiga\SpamGuard\Filament\Resources\RefusedContacts;
 
 use BackedEnum;
 use Cotiga\SpamGuard\Filament\Resources\RefusedContacts\Pages\ListSGRefusedContacts;
+use Cotiga\SpamGuard\Models\BannedEmail;
 use Cotiga\SpamGuard\Models\BannedIp;
 use Cotiga\SpamGuard\Models\RefusedContact;
 use Filament\Actions\Action;
@@ -67,7 +68,9 @@ class SGRefusedContactResource extends Resource
                 TextColumn::make('mel')
                     ->label('Email')
                     ->searchable()
-                    ->copyable(),
+                    ->copyable()
+                    ->badge()
+                    ->color(fn ($record) => $record->mel && BannedEmail::where('mel', mb_strtolower(trim($record->mel)))->exists() ? 'danger' : 'gray'),
 
                 TextColumn::make('pays')
                     ->label('Pays')
@@ -99,6 +102,13 @@ class SGRefusedContactResource extends Resource
                     ->requiresConfirmation()
                     ->visible(fn ($record) => $record->ip && ! BannedIp::where('ip', $record->ip)->exists())
                     ->action(fn ($record) => BannedIp::firstOrCreate(['ip' => $record->ip])),
+                Action::make('banEmail')
+                    ->label('Bannir e-mail')
+                    ->icon(Heroicon::OutlinedEnvelopeOpen)
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn ($record) => $record->mel && ! BannedEmail::where('mel', mb_strtolower(trim($record->mel)))->exists())
+                    ->action(fn ($record) => BannedEmail::firstOrCreate(['mel' => mb_strtolower(trim($record->mel))])),
                 DeleteAction::make(),
             ])
             ->toolbarActions([

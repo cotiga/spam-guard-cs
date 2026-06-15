@@ -2,6 +2,8 @@
 
 namespace Cotiga\SpamGuard\Services;
 
+use Cotiga\SpamGuard\Models\BannedEmail;
+use Cotiga\SpamGuard\Models\BannedIp;
 use Cotiga\SpamGuard\Models\RefusedContact;
 use Illuminate\Support\Facades\RateLimiter;
 use Stevebauman\Location\Facades\Location;
@@ -10,6 +12,18 @@ class FormSpamGuard
 {
     public function isSpam(string $email, string $ip, array $formData = [], string $formName = 'contact'): bool
     {
+        // IP bannie (manuellement depuis l'admin ou par ban auto) → refus immédiat.
+        if ($ip && BannedIp::where('ip', $ip)->exists()) {
+            $this->logRefusal($email, $ip, 'N/A', 'IP bannie', $formName);
+            return true;
+        }
+
+        // E-mail banni manuellement depuis l'admin → refus immédiat (comparaison normalisée).
+        if ($email !== '' && BannedEmail::where('mel', mb_strtolower(trim($email)))->exists()) {
+            $this->logRefusal($email, $ip, 'N/A', 'E-mail banni', $formName);
+            return true;
+        }
+
         $maxAttempts = config('spam-guard.rate_limit_max_attempts', 3);
         $decay       = config('spam-guard.rate_limit_decay_seconds', 3600);
         $key         = 'form-submit:'.$ip;
