@@ -12,6 +12,13 @@ class FormSpamGuard
 {
     public function isSpam(string $email, string $ip, array $formData = [], string $formName = 'contact'): bool
     {
+        // IP de confiance (loopback local par défaut, IP internes déclarées) : jamais
+        // considérée comme spam. Évite les faux positifs en développement (rate-limit,
+        // message générique…). Pour tester l'antispam en local, retirer l'IP de la liste.
+        if ($ip && in_array($ip, (array) config('spam-guard.trusted_ips', ['127.0.0.1', '::1']), true)) {
+            return false;
+        }
+
         // IP bannie (manuellement depuis l'admin ou par ban auto) → refus immédiat.
         if ($ip && BannedIp::where('ip', $ip)->exists()) {
             $this->logRefusal($email, $ip, 'N/A', 'IP bannie', $formName);

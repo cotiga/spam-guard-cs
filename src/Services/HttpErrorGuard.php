@@ -30,6 +30,13 @@ class HttpErrorGuard
 
         $ip = $request->ip();
 
+        // 0) IP de confiance (loopback local par défaut, IP internes déclarées) :
+        //    ni journalisation ni ban → comportement natif de Laravel. Évite
+        //    l'auto-ban en développement où l'on génère beaucoup d'erreurs.
+        if ($ip && in_array($ip, (array) config('spam-guard.trusted_ips', ['127.0.0.1', '::1']), true)) {
+            return null;
+        }
+
         // 1) IP déjà bannie → 403 immédiat, sans journalisation.
         if ($ip && $this->isBanned($ip)) {
             return response('Forbidden', Response::HTTP_FORBIDDEN);
