@@ -80,7 +80,11 @@ return [
     */
     'suspicious_email_patterns' => [
         '/^[a-z]{20,}\d{2,}@/i',
-        '/\d{5,}@/',
+        // Seuil à 7 chiffres : à 5, le motif refusait de vrais prospects qui mettent
+        // leur code postal ou leur année de naissance dans leur adresse
+        // (micela74200@yahoo.fr, issey93600@gmail.com…). Mesuré sur le corpus deuxia :
+        // 68 refus à tort sur 89 détections. Un refus est silencieux côté visiteur.
+        '/\d{7,}@/',
         '/^[A-Z0-9]{20,}@/',
     ],
 
