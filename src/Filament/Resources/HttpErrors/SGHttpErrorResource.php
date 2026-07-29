@@ -4,9 +4,9 @@ namespace Cotiga\SpamGuard\Filament\Resources\HttpErrors;
 
 use BackedEnum;
 use Cotiga\SpamGuard\Filament\Resources\HttpErrors\Pages\ListSGHttpErrors;
+use Cotiga\SpamGuard\Filament\Actions\BanActions;
 use Cotiga\SpamGuard\Models\BannedIp;
 use Cotiga\SpamGuard\Models\HttpError;
-use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -97,13 +97,8 @@ class SGHttpErrorResource extends Resource
                     ->options(fn () => HttpError::distinct()->pluck('status_code', 'status_code')->toArray()),
             ])
             ->recordActions([
-                Action::make('ban')
-                    ->label('Bannir IP')
-                    ->icon(Heroicon::OutlinedNoSymbol)
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->ip && ! BannedIp::where('ip', $record->ip)->exists())
-                    ->action(fn ($record) => BannedIp::firstOrCreate(['ip' => $record->ip])),
+                // Une erreur HTTP n'a pas d'adresse e-mail : IP seule.
+                ...BanActions::make(null),
                 DeleteAction::make(),
             ])
             ->toolbarActions([
