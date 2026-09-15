@@ -11,10 +11,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Seuil de déclenchement de l'email (nombre d'occurrences de la même erreur)
+    | Alertes mail — ce qui sort par mail et à quelle dose
     |--------------------------------------------------------------------------
+    | Seules deux situations méritent un mail : une erreur serveur (5xx) et un
+    | 404 atteint depuis une page du site (lien mort réel, page supprimée). Les
+    | 404 de robots et de scanners restent journalisés dans l'écran Erreurs HTTP
+    | sans jamais déclencher d'envoi : c'est ce bruit qui faisait bloquer les
+    | comptes expéditeurs pour spam.
+    |
+    | Une URL n'alerte qu'une fois par jour, et le plafond journalier borne le
+    | total tous statuts confondus.
     */
-    'alert_threshold' => env('SPAM_GUARD_ALERT_THRESHOLD', 10),
+    'alert_threshold' => env('SPAM_GUARD_ALERT_THRESHOLD', 10),      // 404 internes : à partir de N occurrences
+    'alert_5xx_threshold' => env('SPAM_GUARD_ALERT_5XX_THRESHOLD', 1), // erreurs serveur : dès la première
+    'alert_max_per_day' => env('SPAM_GUARD_ALERT_MAX_PER_DAY', 20),  // plafond de mails par jour, 0 = aucun mail
 
     /*
     |--------------------------------------------------------------------------

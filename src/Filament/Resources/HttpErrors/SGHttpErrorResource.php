@@ -3,8 +3,8 @@
 namespace Cotiga\SpamGuard\Filament\Resources\HttpErrors;
 
 use BackedEnum;
-use Cotiga\SpamGuard\Filament\Resources\HttpErrors\Pages\ListSGHttpErrors;
 use Cotiga\SpamGuard\Filament\Actions\BanActions;
+use Cotiga\SpamGuard\Filament\Resources\HttpErrors\Pages\ListSGHttpErrors;
 use Cotiga\SpamGuard\Models\BannedIp;
 use Cotiga\SpamGuard\Models\HttpError;
 use Filament\Actions\BulkActionGroup;
@@ -79,6 +79,14 @@ class SGHttpErrorResource extends Resource
                     ->copyable()
                     ->badge()
                     ->color(fn ($record) => BannedIp::where('ip', $record->ip)->exists() ? 'danger' : 'gray'),
+
+                TextColumn::make('referer')
+                    ->label('Provenance')
+                    ->placeholder('directe / robot')
+                    ->limit(60)
+                    ->tooltip(fn ($record) => $record->referer)
+                    ->wrap()
+                    ->toggleable(),
 
                 TextColumn::make('error_message')
                     ->label('Message')

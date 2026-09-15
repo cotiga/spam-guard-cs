@@ -11,9 +11,15 @@ class HttpError extends Model
     protected $fillable = [
         'status_code',
         'url',
+        'referer',
         'ip',
         'user_agent',
         'error_message',
         'count',
+        'alerted_at',
+    ];
+
+    protected $casts = [
+        'alerted_at' => 'datetime',
     ];
 }
