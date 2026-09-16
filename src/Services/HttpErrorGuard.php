@@ -8,6 +8,7 @@ use Cotiga\SpamGuard\Models\HttpError;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -26,6 +27,12 @@ class HttpErrorGuard
     {
         // Validation et authentification : laissés au comportement natif de Laravel 13.
         if ($e instanceof ValidationException || $e instanceof AuthenticationException) {
+            return null;
+        }
+
+        // Notre propre vérification de lien (voir refererCitesUrl) : ni
+        // journalisation ni ban, le serveur ne doit pas se bannir lui-même.
+        if ($request->headers->has('X-Coti-Linkcheck')) {
             return null;
         }
 
@@ -132,11 +139,11 @@ class HttpErrorGuard
 
     /**
      * Deux situations seulement justifient un mail : une erreur serveur, et un
-     * 404 atteint depuis une page du site — soit un lien mort, soit une page
-     * qui a existé. Les 404 de robots et de scanners, qui forment l'essentiel
-     * du volume, restent consultables dans l'écran Erreurs HTTP sans rien
-     * envoyer. Chaque URL n'alerte qu'une fois par jour, et un plafond
-     * journalier borne le total.
+     * 404 dont on a la PREUVE qu'une page du site pointe dessus — lien mort
+     * réel, page supprimée. Les 404 de robots et de scanners, qui forment
+     * l'essentiel du volume, restent consultables dans l'écran Erreurs HTTP
+     * sans rien envoyer. Une URL n'alerte qu'une fois, et un plafond journalier
+     * borne le total.
      */
     protected function maybeAlert(HttpError $error, Request $request): void
     {
@@ -148,10 +155,15 @@ class HttpErrorGuard
             return;
         }
 
+        // Déjà signalée : le journal suffit, on ne renvoie jamais la même URL.
+        if ($error->alerted_at) {
+            return;
+        }
+
         if ($status >= 500) {
             $threshold = (int) config('spam-guard.alert_5xx_threshold', 1);
-        } elseif ($status === 404 && $this->isInternalReferer($error->referer, $request)) {
-            $threshold = (int) config('spam-guard.alert_threshold', 10);
+        } elseif ($status === 404) {
+            $threshold = (int) config('spam-guard.alert_threshold', 3);
         } else {
             return;
         }
@@ -160,8 +172,8 @@ class HttpErrorGuard
             return;
         }
 
-        // Déjà signalée aujourd'hui : on n'y revient pas.
-        if ($error->alerted_at && $error->alerted_at->isToday()) {
+        // Le test coûteux vient en dernier : seuil franchi, jamais alertée.
+        if ($status === 404 && ! $this->refererCitesUrl($request)) {
             return;
         }
 
@@ -173,14 +185,17 @@ class HttpErrorGuard
             $site = config('app.name', 'Site');
             $corps = "Erreur {$status} — {$count} occurrence(s)\n"
                 .'URL : '.$request->fullUrl()."\n"
-                .'Provenance : '.($error->referer ?: 'directe / inconnue')."\n"
+                .($status === 404
+                    ? 'Lien mort trouvé sur : '.$error->referer."\n"
+                    : 'Provenance : '.($error->referer ?: 'directe / inconnue')."\n")
                 .'IP : '.($error->ip ?: 'inconnue')."\n"
                 .'Message : '.($error->error_message ?: 'aucun');
 
-            Mail::raw(
-                $corps,
-                fn ($m) => $m->to($email)->subject("{$site} — Erreur {$status} récurrente")
-            );
+            $objet = $status === 404
+                ? "{$site} — Lien mort sur le site"
+                : "{$site} — Erreur {$status}";
+
+            Mail::raw($corps, fn ($m) => $m->to($email)->subject($objet));
 
             $error->forceFill(['alerted_at' => now()])->save();
         } catch (Throwable) {
@@ -188,16 +203,118 @@ class HttpErrorGuard
     }
 
     /**
-     * Le visiteur venait-il d'une page du site lui-même ? C'est ce qui sépare
-     * un lien mort d'un scan de robot.
+     * Seule preuve recevable d'un lien mort : aller lire la page citée par le
+     * Referer et y trouver réellement le lien vers l'URL en 404.
+     *
+     * L'en-tête Referer est écrit par le client : un robot qui y colle le
+     * domaine du site passe pour un visiteur interne. C'est ce qui a rempli la
+     * boîte de 404 de scanners. On ne lui fait donc plus confiance — il ne
+     * sert qu'à désigner la page à vérifier.
+     *
+     * Le contrôle n'a lieu qu'au moment où un mail partirait, son résultat est
+     * gardé pour la journée et leur nombre est plafonné : quelques requêtes
+     * HTTP par jour et par site, au plus.
      */
-    protected function isInternalReferer(?string $referer, Request $request): bool
+    protected function refererCitesUrl(Request $request): bool
     {
-        if (! $referer) {
+        $referer = $request->headers->get('referer');
+
+        if (! $referer || ! $this->isInternalHost($referer, $request)) {
             return false;
         }
 
-        $hote = parse_url($referer, PHP_URL_HOST);
+        $cible = $this->cheminNormalise($request->fullUrl());
+        $source = $this->cheminNormalise($referer);
+
+        // Une page qui se cite elle-même ne prouve rien.
+        if ($cible === '' || $cible === $source) {
+            return false;
+        }
+
+        try {
+            $cle = 'spam-guard:linkcheck:'.md5($source.'|'.$cible);
+
+            if (($connu = Cache::get($cle)) !== null) {
+                return (bool) $connu;
+            }
+
+            if (! $this->withinDailyCheckQuota()) {
+                return false;
+            }
+
+            $cite = $this->pageCite($referer, $cible);
+
+            Cache::put($cle, $cite, now()->endOfDay());
+
+            return $cite;
+        } catch (Throwable) {
+            // Réseau ou cache indisponible : pas de preuve, donc pas de mail.
+            return false;
+        }
+    }
+
+    /**
+     * Charge la page source et cherche un href/src pointant vers le chemin en
+     * 404. L'en-tête X-Coti-Linkcheck évite que cet appel se journalise ou
+     * fasse bannir le serveur par son propre garde.
+     */
+    protected function pageCite(string $referer, string $cible): bool
+    {
+        $reponse = Http::withHeaders(['X-Coti-Linkcheck' => '1'])
+            ->connectTimeout(2)
+            ->timeout(4)
+            ->withoutRedirecting()
+            ->get($referer);
+
+        if (! $reponse->successful()) {
+            return false;
+        }
+
+        $html = Str::limit($reponse->body(), 500000, '');
+
+        if (! preg_match_all('#(?:href|src)\s*=\s*["\']([^"\']+)["\']#i', $html, $liens)) {
+            return false;
+        }
+
+        foreach ($liens[1] as $lien) {
+            if ($this->cheminNormalise($lien, $referer) === $cible) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Chemin + query d'une URL, éventuellement relative à une base, ramenés à
+     * une forme comparable (décodée, sans slash final, sans ancre).
+     */
+    protected function cheminNormalise(string $url, ?string $base = null): string
+    {
+        $url = trim($url);
+
+        if ($url === '' || Str::startsWith($url, ['#', 'mailto:', 'tel:', 'javascript:', 'data:'])) {
+            return '';
+        }
+
+        // Lien relatif : on le raccroche au dossier de la page source.
+        if ($base && ! preg_match('#^(?:[a-z][a-z0-9+.-]*:)?//#i', $url)) {
+            $racine = preg_replace('#(?<!/)/[^/]*$#', '/', parse_url($base, PHP_URL_PATH) ?: '/');
+            $url = Str::startsWith($url, '/') ? $url : $racine.$url;
+        }
+
+        $parties = parse_url($url);
+        $chemin = rawurldecode($parties['path'] ?? '');
+        $query = $parties['query'] ?? '';
+
+        $chemin = rtrim($chemin, '/');
+
+        return $query !== '' ? $chemin.'?'.$query : $chemin;
+    }
+
+    protected function isInternalHost(string $url, Request $request): bool
+    {
+        $hote = parse_url($url, PHP_URL_HOST);
 
         if (! $hote) {
             return false;
@@ -206,6 +323,24 @@ class HttpErrorGuard
         $normaliser = fn (string $h) => Str::lower(Str::replaceStart('www.', '', $h));
 
         return $normaliser($hote) === $normaliser($request->getHost());
+    }
+
+    /**
+     * Borne dure sur le nombre de vérifications de lien par jour : même sous
+     * un scan massif, le site ne s'interroge lui-même qu'un nombre fini de fois.
+     */
+    protected function withinDailyCheckQuota(): bool
+    {
+        $max = (int) config('spam-guard.alert_404_max_checks_per_day', 50);
+
+        if ($max < 1) {
+            return false;
+        }
+
+        $cle = 'spam-guard:linkchecks:'.now()->toDateString();
+        Cache::add($cle, 0, now()->endOfDay());
+
+        return (int) Cache::increment($cle) <= $max;
     }
 
     /**

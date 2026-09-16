@@ -14,17 +14,17 @@ return [
     | Alertes mail — ce qui sort par mail et à quelle dose
     |--------------------------------------------------------------------------
     | Seules deux situations méritent un mail : une erreur serveur (5xx) et un
-    | 404 atteint depuis une page du site (lien mort réel, page supprimée). Les
-    | 404 de robots et de scanners restent journalisés dans l'écran Erreurs HTTP
-    | sans jamais déclencher d'envoi : c'est ce bruit qui faisait bloquer les
-    | comptes expéditeurs pour spam.
+    | 404 dont on a la preuve qu'une page du site pointe dessus. Cette preuve
+    | n'est PAS l'en-tête Referer, que le robot écrit lui-même : le garde va
+    | lire la page citée et y cherche le lien. Sans lien trouvé, pas de mail.
     |
-    | Une URL n'alerte qu'une fois par jour, et le plafond journalier borne le
-    | total tous statuts confondus.
+    | Une URL n'alerte qu'une seule fois. Les 404 de scanners restent au
+    | journal, dans l'écran Erreurs HTTP.
     */
-    'alert_threshold' => env('SPAM_GUARD_ALERT_THRESHOLD', 10),      // 404 internes : à partir de N occurrences
+    'alert_threshold' => env('SPAM_GUARD_ALERT_THRESHOLD', 3),       // 404 : occurrences avant de vérifier le lien
     'alert_5xx_threshold' => env('SPAM_GUARD_ALERT_5XX_THRESHOLD', 1), // erreurs serveur : dès la première
     'alert_max_per_day' => env('SPAM_GUARD_ALERT_MAX_PER_DAY', 20),  // plafond de mails par jour, 0 = aucun mail
+    'alert_404_max_checks_per_day' => env('SPAM_GUARD_ALERT_404_MAX_CHECKS', 50), // vérifications de lien par jour
 
     /*
     |--------------------------------------------------------------------------
