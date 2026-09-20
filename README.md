@@ -6,8 +6,9 @@ Antispam, ban IP et journalisation d'erreurs HTTP pour le socle **CotiCMS Core/S
 
 - Rate limiting par IP
 - Filtrage email : TLD, domaine, patterns suspects
-- Détection nom avec chiffres / charabia, message générique de bot, message charabia
-- Validation téléphone (format date, lettres, longueur hors norme)
+- Détection nom avec chiffres / charabia, message charabia (bloc sans espace)
+- Détection d'URL sortante dans le message (les liens vers le site lui-même passent)
+- Journalisation du nom et du message refusés, pour auditer les faux positifs
 - Géoblocage (via `stevebauman/location`)
 - Log et ban automatique des IP abusives
 - Email d'alerte sur erreurs récurrentes

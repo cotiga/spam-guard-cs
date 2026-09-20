@@ -88,6 +88,21 @@ class SGRefusedContactResource extends Resource
                 TextColumn::make('raison')
                     ->label('Raison du refus')
                     ->wrap(),
+
+                TextColumn::make('nom')
+                    ->label('Nom')
+                    ->searchable()
+                    ->toggleable(),
+
+                // Le message est la seule pièce qui permet de trancher entre un bot
+                // et un faux positif.
+                TextColumn::make('message')
+                    ->label('Message refusé (500 car. max)')
+                    ->wrap()
+                    ->limit(200)
+                    ->tooltip(fn ($record) => $record->message)
+                    ->searchable()
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('form_name')

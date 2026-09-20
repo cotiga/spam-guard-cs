@@ -111,28 +111,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Messages génériques de bots (similarité > gibberish.similarity_threshold %)
+    | Message générique : plus aucune détection — retiré le 2026-09-20
     |--------------------------------------------------------------------------
+    | « Demande de devis », « Merci de me recontacter », « Je souhaite avoir des
+    | informations » : c'est exactement ce qu'écrit un vrai prospect. Aucun critère
+    | ne distingue ces messages d'un bot, et le refus est silencieux — le visiteur
+    | croit son message envoyé. Les clés generic_bot_messages, vague_words et
+    | generic_message sont supprimées, ne pas les réintroduire.
     */
-    'generic_bot_messages' => [
-        'je souhaite avoir des informations',
-        'i would like to get more information',
-        'please contact me',
-        'i am interested in your services',
-        'veuillez me contacter',
-        'looking for a quote',
-        'demande de devis',
-        'request for information',
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Mots vagues dans les messages courts
-    |--------------------------------------------------------------------------
-    */
-    'vague_words' => [
-        'information', 'informations', 'renseignement', 'contact', 'services',
-    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -148,22 +134,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Détection de message générique
-    |--------------------------------------------------------------------------
-    */
-    'generic_message' => [
-        'similarity_threshold' => 70,
-        'short_max_words'      => 8,
-        'short_max_length'     => 60,
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Détection de message charabia (token sans espace)
     |--------------------------------------------------------------------------
+    | Un bloc d'au moins 30 caractères sans la moindre espace. Une adresse e-mail
+    | laissée en guise de message est exclue par le code.
     */
     'gibberish_message' => [
-        'min_length_without_space' => 20,
+        'min_length_without_space' => 30,
     ],
 
 ];

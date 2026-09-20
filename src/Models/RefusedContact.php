@@ -11,8 +11,10 @@ class RefusedContact extends Model
     protected $fillable = [
         'form_name',
         'mel',
+        'nom',
         'ip',
         'pays',
         'raison',
+        'message',
     ];
 }
