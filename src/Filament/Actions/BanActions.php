@@ -30,7 +30,7 @@ class BanActions
     {
         $actions = [
             Action::make('banIp')
-                ->label('Bannir IP')
+                ->label('Ban IP')
                 ->icon(Heroicon::OutlinedNoSymbol)
                 ->color('danger')
                 ->requiresConfirmation()
@@ -41,7 +41,7 @@ class BanActions
 
         if ($emailField !== null) {
             $actions[] = Action::make('banEmail')
-                ->label('Bannir e-mail')
+                ->label('Ban email')
                 ->icon(Heroicon::OutlinedEnvelopeOpen)
                 ->color('danger')
                 ->requiresConfirmation()
