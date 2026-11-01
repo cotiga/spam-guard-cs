@@ -55,7 +55,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'blocked_countries' => [
-        'RU', 'BY', 'UA', 'KZ', 'SU', 'AM', 'AZ', 'GE', 'KG', 'TJ', 'TM', 'UZ',
+        'RU', 'BY', 'UA', 'KZ', 'SU', 'AM', 'AZ', 'GE', 'KG', 'TJ', 'TM', 'UZ', 'RO', 'LT', 'BG',
         'CN', 'IN', 'PK', 'BD', 'VN', 'ID', 'IR', 'NG', 'EG', 'KE',
     ],
 
