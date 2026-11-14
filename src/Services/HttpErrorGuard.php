@@ -266,7 +266,9 @@ class HttpErrorGuard
             ->withoutRedirecting()
             ->get($referer);
 
-        if (! $reponse->successful()) {
+        // Seule une page HTML prouve un lien : un .js contient des gabarits
+        // (Fancybox : src="{{src}}") que les robots prennent pour des URL.
+        if (! $reponse->successful() || ! Str::contains((string) $reponse->header('Content-Type'), 'text/html')) {
             return false;
         }
 
@@ -277,6 +279,10 @@ class HttpErrorGuard
         }
 
         foreach ($liens[1] as $lien) {
+            if (Str::contains($lien, ['{{', '${'])) {
+                continue;
+            }
+
             if ($this->cheminNormalise($lien, $referer) === $cible) {
                 return true;
             }
